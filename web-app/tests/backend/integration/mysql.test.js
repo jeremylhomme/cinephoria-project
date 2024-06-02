@@ -9,7 +9,7 @@ if (!process.env.MYSQL_HOST) {
   dotenv.config({ path: envPath });
 }
 
-test("should connect to MySQL with success  ", async () => {
+test("should connect to MySQL successfully", async () => {
   const { connection, pool, host } = await connectMySQL();
   assert.ok(host, "Host should be defined");
   assert.strictEqual(host, process.env.MYSQL_HOST);
