@@ -63,16 +63,19 @@ jobs:
 
       - name: Run backend unit tests
         run: npm run test:backend:unit
+        working-directory: ./web-app
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run backend functional tests
         run: npm run test:backend:functional
+        working-directory: ./web-app
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run backend integration tests
         run: npm run test:backend:integration
+        working-directory: ./web-app
         env:
           MONGODB_NAME: mongo_cinephoria_test
           MONGODB_HOST: localhost
