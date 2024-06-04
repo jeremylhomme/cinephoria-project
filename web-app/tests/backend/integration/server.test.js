@@ -1,13 +1,10 @@
 import { test } from "vitest";
 import assert from "assert";
-import dotenv from "dotenv";
 import { app } from "../../../backend/server.js";
 import fetch from "node-fetch";
 
-dotenv.config({ path: ".env.test" });
-
 test("server should start correctly", async () => {
-  let testPort = 5000;
+  let testPort = 5001;
   let server;
   try {
     server = app.listen(testPort);

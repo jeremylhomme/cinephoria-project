@@ -26,67 +26,49 @@ jobs:
         run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Start Docker containers
-        run: docker-compose up -d
+        run: docker-compose --env-file .env.docker.test up -d
         working-directory: ./web-app
         env:
           MONGODB_NAME: mongo_cinephoria_test
-          MONGODB_HOST: localhost
+          MONGODB_HOST: mongodb-db
           MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
           MONGODB_USERNAME: root
           MONGODB_PORT: 27017
           MYSQL_DB_NAME: sql_cinephoria_test
-          MYSQL_HOST: localhost
+          MYSQL_HOST: mysql-db
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           MYSQL_USER: root
-          MYSQL_PORT: 3307
+          MYSQL_PORT: 3306
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
 
-      - name: Check if password environment variables are set
-        run: |
-          passwords=("MONGO_INITDB_ROOT_PASSWORD" "MYSQL_PASSWORD" "MYSQL_ROOT_PASSWORD" "DOCKER_HUB_PASSWORD" "MONGODB_PASSWORD")
-          for password in "${passwords[@]}"
-          do
-            if [ -z "${!password}" ]; then
-              echo "$password is not set."
-            else
-              echo "$password is set."
-            fi
-          done
-        env:
-          MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
-          MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
-
       - name: Run backend unit tests
-        run: npm run test:backend:unit
+        run: npm run test:backend:unit:docker
         working-directory: ./web-app
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run backend functional tests
-        run: npm run test:backend:functional
+        run: npm run test:backend:functional:docker
         working-directory: ./web-app
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
       - name: Run backend integration tests
-        run: npm run test:backend:integration
+        run: npm run test:backend:integration:docker
         working-directory: ./web-app
         env:
           MONGODB_NAME: mongo_cinephoria_test
-          MONGODB_HOST: localhost
+          MONGODB_HOST: mongodb-db
           MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
           MONGODB_USERNAME: root
           MONGODB_PORT: 27017
           MYSQL_DB_NAME: sql_cinephoria_test
-          MYSQL_HOST: localhost
+          MYSQL_HOST: mysql-db
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           MYSQL_USER: root
-          MYSQL_PORT: 3307
+          MYSQL_PORT: 3306
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}

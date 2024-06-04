@@ -1,13 +1,7 @@
 import { test } from "vitest";
 import assert from "assert";
-import dotenv from "dotenv";
-import path from "path";
-import { connectMongoDB } from "../../../backend/server.js";
 
-if (!process.env.MONGODB_HOST) {
-  const envPath = path.resolve(process.cwd(), ".env.test");
-  dotenv.config({ path: envPath });
-}
+import { connectMongoDB } from "../../../backend/server.js";
 
 test("should connect to MongoDB with success", async () => {
   const { connection, db, host } = await connectMongoDB();

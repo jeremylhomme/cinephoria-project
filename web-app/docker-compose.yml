@@ -28,24 +28,52 @@ services:
     depends_on:
       - mysql-db
       - mongodb-db
+      - prisma
     command: >
       sh -c "
-        while ! nc -z mysql-db ${MYSQL_PORT}; do sleep 1; done;
-        while ! nc -z mongodb-db ${MONGODB_PORT}; do sleep 1; done;
-        /usr/src/app/node_modules/.bin/nodemon server.js
+        export MAX_ATTEMPTS=30
+        export ATTEMPTS=0
+        while ! nc -z mysql-db $${MYSQL_PORT}; do
+          sleep 1
+          ATTEMPTS=$$((ATTEMPTS+1))
+          if [ $$ATTEMPTS -eq $$MAX_ATTEMPTS ]; then
+            echo 'Failed to connect to MySQL after $$MAX_ATTEMPTS attempts. Exiting...'
+            exit 1
+          fi
+        done
+        ATTEMPTS=0
+        while ! nc -z mongodb-db $${MONGODB_PORT}; do
+          sleep 1
+          ATTEMPTS=$$((ATTEMPTS+1))
+          if [ $$ATTEMPTS -eq $$MAX_ATTEMPTS ]; then
+            echo 'Failed to connect to MongoDB after $$MAX_ATTEMPTS attempts. Exiting...'
+            exit 1
+          fi
+        done
+        ATTEMPTS=0
+        while ! nc -z prisma 4466; do
+          sleep 1
+          ATTEMPTS=$$((ATTEMPTS+1))
+          if [ $$ATTEMPTS -eq $$MAX_ATTEMPTS ]; then
+            echo 'Failed to connect to Prisma after $$MAX_ATTEMPTS attempts. Exiting...'
+            exit 1
+          fi
+        done
+        /usr/src/app/node_modules/.bin/nodemon backend/server.js
       "
+
     environment:
       - NODE_ENV=development
-      - MONGODB_HOST=${MONGODB_HOST}
-      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_HOST=mongodb-db
+      - MONGODB_USERNAME=root
       - MONGODB_PASSWORD=${MONGODB_PASSWORD}
-      - MONGODB_NAME=${MONGODB_NAME}
-      - MYSQL_USER=${MYSQL_USER}
+      - MONGODB_NAME=mongo_cinephoria_dev
+      - MYSQL_USER=root
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_DB_NAME=${MYSQL_DB_NAME}
-      - MONGODB_PORT=${MONGODB_PORT}
-      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_HOST=mysql-db
+      - MYSQL_DB_NAME=sql_cinephoria_dev
+      - MONGODB_PORT=27017
+      - MYSQL_PORT=3306
     networks:
       - cinephoria-network
 
@@ -53,13 +81,12 @@ services:
     image: mysql:5.7
     restart: always
     environment:
-      - MYSQL_DATABASE=${MYSQL_DB_NAME}
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./mysql-init.sql:/docker-entrypoint-initdb.d/mysql-init.sql
+      - ./mysql-init:/docker-entrypoint-initdb.d/:ro
     networks:
       - cinephoria-network
 
@@ -67,7 +94,7 @@ services:
     image: mongo:latest
     restart: always
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
       - "27017:27017"
@@ -82,16 +109,25 @@ services:
     restart: always
     ports:
       - "4466:4466"
+    volumes:
+      - ./start-prisma.sh:/start-prisma.sh
+    command: >
+      sh -c "
+        while ! nc -z mysql-db 3306; do sleep 1; done;
+        prisma deploy
+      "
     environment:
+      DATABASE_URL: "mysql://root:${MYSQL_PASSWORD}@mysql-db:3306/sql_cinephoria_dev"
       PRISMA_CONFIG: |
         port: 4466
         databases:
           default:
             connector: mysql
-            host: ${MYSQL_HOST}
-            port: ${MYSQL_PORT}
+            host: mysql-db
+            port: 3306
             user: ${MYSQL_USER}
             password: ${MYSQL_PASSWORD}
+            database: sql_cinephoria_dev
     depends_on:
       - mysql-db
     networks:
@@ -101,9 +137,5 @@ networks:
   cinephoria-network:
     driver: bridge
 volumes:
-  data-volume:
-  node_modules:
-  web-root:
-    driver: local
   mysql-data:
   mongo-data:

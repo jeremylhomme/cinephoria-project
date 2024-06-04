@@ -8,35 +8,27 @@ import mysql from "mysql2/promise";
 import { MongoClient } from "mongodb";
 import http from "http";
 
-let envPath;
-switch (process.env.NODE_ENV) {
-  case "production":
-    envPath = ".env.prod";
-    break;
-  case "development":
-    envPath = ".env.dev";
-    break;
-  case "test":
-    envPath = ".env.test";
-    break;
-  default:
-    envPath = ".env.dev";
-}
+import userRoutes from "./routes/userRoutes.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Determine environment path
+const envPath =
+  {
+    production: ".env.prod",
+    development: ".env.dev",
+    test: ".env.test",
+  }[process.env.NODE_ENV] || ".env.dev";
 
 dotenv.config({ path: envPath });
 console.log(`Environment: ${process.env.NODE_ENV}`);
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 // Function to connect to MySQL
-
 const connectMySQL = async () => {
   try {
     const uri = `mysql://${process.env.MYSQL_USER}:${process.env.MYSQL_PASSWORD}@${process.env.MYSQL_HOST}:${process.env.MYSQL_PORT}/${process.env.MYSQL_DB_NAME}`;
     const pool = mysql.createPool(uri);
-
     const connection = await pool.getConnection();
-
     console.log(`MySQL Connected: ${process.env.MYSQL_HOST} ✅`);
     return { connection, pool, host: process.env.MYSQL_HOST };
   } catch (error) {
@@ -47,16 +39,12 @@ const connectMySQL = async () => {
 };
 
 // Function to connect to MongoDB
-
 const connectMongoDB = async () => {
   try {
     const uri = `mongodb://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_NAME}?authSource=admin&authMechanism=SCRAM-SHA-256`;
     const client = new MongoClient(uri);
-
     await client.connect();
-
     const db = client.db(process.env.MONGODB_NAME);
-
     console.log(`MongoDB Connected: ${process.env.MONGODB_HOST} ✅`);
     return { connection: client, db, host: process.env.MONGODB_HOST };
   } catch (error) {
@@ -87,6 +75,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Routes configuration
+app.use("/api/user", userRoutes);
+
 // Add a route handler for the root ("/") path
 app.get("/", (req, res) => {
   res.status(200).send("Index page");
@@ -98,15 +89,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Export the app for testing
 export { app, connectMySQL, connectMongoDB, port };
 
-// Check if the server is already running or start a new server
-if (process.env.NODE_ENV !== "test") {
-  const server = http.createServer(app);
-  server.listen(port, () => console.log(`Server running on port ${port} ✅`));
-  server.on("error", (err) => {
-    if (err.code === "EADDRINUSE") {
-      console.log(`Port ${port} is already in use`);
-    } else {
-      throw err;
-    }
-  });
-}
+const server = http.createServer(app);
+server.listen(port, () => console.log(`Server running on port ${port} ✅`));
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.log(`Port ${port} is in use by Docker`);
+  } else {
+    throw err;
+  }
+});
